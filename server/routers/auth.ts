@@ -1,13 +1,10 @@
 import { z } from "zod";
-
 import { TRPCError } from "@trpc/server";
 
 import { COOKIE_NAME } from "@shared/const";
 
 import { createSessionToken } from "../_core/context";
-
 import { getSessionCookieOptions } from "../_core/cookies";
-
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 import {
@@ -53,8 +50,6 @@ export const authRouter = router({
           user: toPublicUser(user),
         } as const;
       } catch (error) {
-        console.error("[Auth Register] ERROR:", error);
-
         if (error instanceof AuthError) {
           throw new TRPCError({
             code: "BAD_REQUEST",
