@@ -31,11 +31,26 @@ let _db: ReturnType<typeof createDb> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = createDb(process.env.DATABASE_URL);
+      const databaseUrl = process.env.DATABASE_URL;
+      const parsed = new URL(databaseUrl);
+
+      console.log("[Database] Host:", parsed.hostname);
+      console.log("[Database] Port:", parsed.port);
+      console.log("[Database] Database:", parsed.pathname);
+      console.log("[Database] SSL:", process.env.DATABASE_SSL);
+
+      _db = createDb(databaseUrl);
+
+      console.log("[Database] Pool created successfully");
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("[Database] Failed to connect:", error);
       _db = null;
     }
   }
+
+  if (!process.env.DATABASE_URL) {
+    console.error("[Database] DATABASE_URL is not defined");
+  }
+
   return _db;
 }
