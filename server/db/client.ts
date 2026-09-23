@@ -2,39 +2,40 @@ import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 
 /**
- * DATABASE_SSL=true active une connexion chiffrée (TLS), requise par la
- * plupart des bases MySQL hébergées dans le cloud (TiDB Serverless,
- * PlanetScale, Aiven, Clever Cloud...). Laisser à false pour une base locale
- * (MariaDB/MySQL sur votre machine ou en développement) qui n'exige pas TLS.
+ * Création de la connexion MySQL/TiDB.
  *
- * L'option SSL est encodée directement dans l'URL (paramètre ?ssl=...), que
- * mysql2 sait nativement interpréter.
+ * En production sur TiDB Cloud, DATABASE_SSL=true active TLS.
+ * Les options TLS sont transmises directement à mysql2 plutôt
+ * que d'être encodées dans DATABASE_URL.
  */
-export function withSsl(databaseUrl: string): string {
-  if (process.env.DATABASE_SSL !== "true") return databaseUrl;
-
-  const parsed = new URL(databaseUrl);
-
-  parsed.searchParams.set(
-    "ssl",
-    JSON.stringify({
-      minVersion: "TLSv1.2",
-      rejectUnauthorized: true,
-    })
-  );
-
-  return parsed.toString();
-}
 
 function createDb(databaseUrl: string) {
-  const pool = mysql.createPool(withSsl(databaseUrl));
+  const useSsl = process.env.DATABASE_SSL === "true";
+
+  const pool = mysql.createPool({
+    uri: databaseUrl,
+
+    ...(useSsl
+      ? {
+          ssl: {
+            minVersion: "TLSv1.2",
+            rejectUnauthorized: true,
+          },
+        }
+      : {}),
+  });
+
   return drizzle(pool);
 }
 
 let _db: ReturnType<typeof createDb> | null = null;
 
-// Instance drizzle créée paresseusement pour permettre à l'outillage local
-// (build, lint) de fonctionner sans base de données configurée.
+/**
+ * Retourne l'instance Drizzle.
+ *
+ * L'initialisation est volontairement paresseuse afin que le build
+ * et les outils locaux puissent fonctionner sans DATABASE_URL.
+ */
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
