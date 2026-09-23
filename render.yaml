@@ -2,17 +2,16 @@ services:
   - type: web
     name: jeci
     runtime: node
-    plan: starter # passez à "free" pour tester sans frais (voir notes du guide)
+    plan: free # passez à "starter" plus tard (dashboard Render) pour un service toujours actif
     region: frankfurt # rapprochez-le de votre cluster TiDB si possible
     branch: main
     buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /
-    # preDeployCommand nécessite un plan payant (starter ou plus).
-    # Sur le plan free, commentez cette ligne et lancez "npm run db:push"
-    # depuis votre machine (DATABASE_URL pointant vers TiDB) avant chaque
-    # déploiement qui modifie le schéma.
-    preDeployCommand: npm run db:push
+    # preDeployCommand nécessite un plan payant (starter ou plus) : sur le
+    # plan free, elle est retirée. Lancez "npm run db:push" depuis votre
+    # machine (DATABASE_URL pointant vers TiDB) avant chaque déploiement qui
+    # modifie le schéma — voir l'étape "Créer les tables" du guide.
     envVars:
       - key: NODE_ENV
         value: production
