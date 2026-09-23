@@ -5,16 +5,19 @@ services:
     plan: free # passez à "starter" plus tard (dashboard Render) pour un service toujours actif
     region: frankfurt # rapprochez-le de votre cluster TiDB si possible
     branch: main
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /
     # preDeployCommand nécessite un plan payant (starter ou plus) : sur le
     # plan free, elle est retirée. Lancez "npm run db:push" depuis votre
     # machine (DATABASE_URL pointant vers TiDB) avant chaque déploiement qui
     # modifie le schéma — voir l'étape "Créer les tables" du guide.
+    #
+    # Pas de NODE_ENV=production ici : le script "start" du projet le règle
+    # déjà lui-même. Le définir en variable d'env Render le rendrait actif
+    # aussi pendant le build, ce qui fait sauter l'installation des
+    # devDependencies (vite, esbuild...) et casse "npm run build".
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: PORT
         value: 3000
       - key: DATABASE_URL
