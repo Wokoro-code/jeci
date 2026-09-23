@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1789643211682,
+      "tag": "0000_brief_rocket_racer",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1789868794818,
+      "tag": "0001_concerned_bloodaxe",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789913577569,
+      "tag": "0002_mysterious_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1789986727602,
+      "tag": "0003_clammy_serpent_society",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1790059208114,
+      "tag": "0004_mushy_giant_man",
+      "breakpoints": true
+    }
+  ]
+}

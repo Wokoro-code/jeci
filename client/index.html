@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>JECI — Réseau international des Jécistes</title>
+    <meta name="description" content="JECI — Réseau international des Jécistes : plateforme communautaire et professionnelle des Jécistes et anciens Jécistes." />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;600;700&family=EB+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      /* JECI media viewer: delegated click handling covers received message images and downloadable PDFs. */
+      (() => {
+        const openViewer = (kind, src, title) => {
+          const overlay = document.createElement('div');
+          overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-label', title);
+          Object.assign(overlay.style, { position: 'fixed', inset: '0', zIndex: '9999', display: 'flex', flexDirection: 'column', background: 'rgba(9,24,48,.94)' });
+          const bar = document.createElement('div');
+          Object.assign(bar.style, { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '14px 18px', color: 'white', fontFamily: 'DM Sans, sans-serif' });
+          const label = document.createElement('strong'); label.textContent = title; bar.append(label);
+          const controls = document.createElement('div'); Object.assign(controls.style, { display: 'flex', gap: '8px' });
+          const download = document.createElement('a'); download.href = src; download.download = title; download.textContent = 'Télécharger'; Object.assign(download.style, { color: '#172b4d', background: '#f6df9f', borderRadius: '999px', padding: '9px 13px', fontSize: '12px', fontWeight: '700', textDecoration: 'none' }); controls.append(download);
+          const close = document.createElement('button'); close.textContent = 'Fermer'; Object.assign(close.style, { color: 'white', background: 'transparent', border: '1px solid rgba(255,255,255,.45)', borderRadius: '999px', padding: '8px 13px', fontSize: '12px', fontWeight: '700' }); controls.append(close); bar.append(controls); overlay.append(bar);
+          const media = kind === 'image' ? document.createElement('img') : document.createElement('iframe'); media.src = src; media.title = title;
+          Object.assign(media.style, kind === 'image' ? { flex: '1', minHeight: '0', width: '100%', objectFit: 'contain', padding: '0 18px 18px' } : { flex: '1', width: '100%', border: '0', background: 'white' }); overlay.append(media);
+          const dismiss = () => { document.removeEventListener('keydown', onKey); overlay.remove(); }; const onKey = (e) => { if (e.key === 'Escape') dismiss(); }; close.onclick = dismiss; overlay.onclick = (e) => { if (e.target === overlay) dismiss(); }; document.addEventListener('keydown', onKey); document.body.append(overlay); close.focus();
+        };
+        document.addEventListener('click', (event) => {
+          const target = event.target; if (!(target instanceof Element)) return;
+          const image = target.closest('img[alt="Rencontre JEC"]'); if (image) { event.preventDefault(); openViewer('image', image.getAttribute('src'), 'Rencontre JEC'); return; }
+          const file = target.closest('a[download][href]'); if (file && file.textContent.includes('Programme PDF')) { event.preventDefault(); openViewer('pdf', file.getAttribute('href'), 'Programme des rendez-vous JECI'); }
+        });
+      })();
+    </script>
+  </body>
+
+</html>

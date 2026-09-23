@@ -1,0 +1,16 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: jec_network
+      MYSQL_USER: jec
+      MYSQL_PASSWORD: jec_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - jec_mysql_data:/var/lib/mysql
+
+volumes:
+  jec_mysql_data:
