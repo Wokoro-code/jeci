@@ -12,7 +12,6 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import tls from "node:tls";
 import { ENV } from "./_core/env";
 
 const UPLOADS_DIR = path.resolve(process.cwd(), "uploads");
@@ -40,54 +39,15 @@ function isS3Configured(): boolean {
   );
 }
 
-/**
- * Affiche uniquement des informations non sensibles
- * permettant de diagnostiquer la configuration R2.
- *
- * Aucune clé d'accès ni clé secrète n'est affichée.
- */
-function logR2Configuration(): void {
-  const endpoint = ENV.s3Endpoint?.replace(/\/+$/, "");
-
-  console.log("[R2 Diagnostic] Configuration:");
-  console.log(`  Bucket: ${ENV.s3Bucket ? ENV.s3Bucket : "(absent)"}`);
-  console.log(`  Region: ${ENV.s3Region || "(absente)"}`);
-  console.log(`  Endpoint: ${endpoint || "(absent)"}`);
-  console.log(
-    `  Access Key ID: ${ENV.s3AccessKeyId ? "présente" : "ABSENTE"}`,
-  );
-  console.log(
-    `  Secret Access Key: ${ENV.s3SecretAccessKey ? "présente" : "ABSENTE"}`,
-  );
-  console.log(
-    `  Public Base URL: ${
-      ENV.s3PublicBaseUrl || "(absente)"
-    }`,
-  );
-
-  console.log("[R2 Diagnostic] Node/TLS:");
-  console.log(`  Node: ${process.version}`);
-  console.log(`  OpenSSL: ${process.versions.openssl}`);
-  console.log(
-    `  TLS minimum Node: ${tls.DEFAULT_MIN_VERSION}`,
-  );
-  console.log(
-    `  TLS maximum Node: ${tls.DEFAULT_MAX_VERSION}`,
-  );
-}
-
 let _s3: S3Client | null = null;
 
 function getS3Client(): S3Client {
   if (!_s3) {
     const endpoint = ENV.s3Endpoint?.replace(/\/+$/, "");
 
-    logR2Configuration();
-
     _s3 = new S3Client({
       region: ENV.s3Region || "auto",
       endpoint,
-
       credentials: {
         accessKeyId: ENV.s3AccessKeyId!,
         secretAccessKey: ENV.s3SecretAccessKey!,
@@ -111,99 +71,24 @@ export async function storagePut(
       : Buffer.from(data);
 
   if (isS3Configured()) {
-    const bucket = ENV.s3Bucket!;
-    const endpoint = ENV.s3Endpoint?.replace(/\/+$/, "");
+    await getS3Client().send(
+      new PutObjectCommand({
+        Bucket: ENV.s3Bucket!,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
 
-    console.log("[R2 Diagnostic] Début upload:");
-    console.log(`  Bucket: ${bucket}`);
-    console.log(`  Endpoint: ${endpoint || "(absent)"}`);
-    console.log(`  Region: ${ENV.s3Region || "auto"}`);
-    console.log(`  Key: ${key}`);
-    console.log(`  Content-Type: ${contentType}`);
-    console.log(`  Taille: ${body.length} octets`);
+    const publicBase = ENV.s3PublicBaseUrl?.replace(/\/+$/, "");
 
-    try {
-      await getS3Client().send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key: key,
-          Body: body,
-          ContentType: contentType,
-        }),
-      );
-
-      console.log("[R2 Diagnostic] Upload R2 réussi.");
-
-      const publicBase = ENV.s3PublicBaseUrl?.replace(/\/+$/, "");
-
-      return {
-        key,
-        url: publicBase
-          ? `${publicBase}/${key}`
-          : `/uploads/${key}`,
-      };
-    } catch (error) {
-      console.error("[R2 Diagnostic] ÉCHEC upload R2.");
-
-      if (error instanceof Error) {
-        console.error(`  Name: ${error.name}`);
-        console.error(`  Message: ${error.message}`);
-
-        const awsError = error as Error & {
-          code?: string;
-          Code?: string;
-          $metadata?: {
-            httpStatusCode?: number;
-            requestId?: string;
-            extendedRequestId?: string;
-          };
-          cause?: unknown;
-        };
-
-        if (awsError.code) {
-          console.error(`  Code: ${awsError.code}`);
-        }
-
-        if (awsError.Code) {
-          console.error(`  AWS Code: ${awsError.Code}`);
-        }
-
-        if (awsError.$metadata) {
-          console.error(
-            `  HTTP Status: ${
-              awsError.$metadata.httpStatusCode ?? "(absent)"
-            }`,
-          );
-
-          console.error(
-            `  Request ID: ${
-              awsError.$metadata.requestId ?? "(absent)"
-            }`,
-          );
-
-          console.error(
-            `  Extended Request ID: ${
-              awsError.$metadata.extendedRequestId ?? "(absent)"
-            }`,
-          );
-        }
-
-        if (awsError.cause instanceof Error) {
-          console.error(
-            `  Cause: ${awsError.cause.name}: ${awsError.cause.message}`,
-          );
-        }
-      } else {
-        console.error("  Erreur inconnue:", error);
-      }
-
-      throw error;
-    }
+    return {
+      key,
+      url: publicBase
+        ? `${publicBase}/${key}`
+        : `/uploads/${key}`,
+    };
   }
-
-  console.log(
-    "[Storage] R2 non configuré : utilisation du stockage local.",
-  );
 
   const destination = path.join(UPLOADS_DIR, key);
 
@@ -261,3 +146,4 @@ export async function storageGetSignedUrl(
 
   return `/uploads/${key}`;
 }
+
