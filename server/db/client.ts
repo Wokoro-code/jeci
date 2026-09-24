@@ -2,31 +2,39 @@ import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 
 /**
- * Création de la connexion MySQL/TiDB.
+ * Crée la connexion MySQL/TiDB.
  *
- * En production sur TiDB Cloud, DATABASE_SSL=true active TLS.
- * Les options TLS sont transmises directement à mysql2 plutôt
- * que d'être encodées dans DATABASE_URL.
+ * La connexion est construite explicitement à partir de DATABASE_URL
+ * afin de séparer clairement les paramètres MySQL et la configuration TLS.
  *
- * TiDB Serverless (endpoint public, sur AWS) coupe les connexions
- * inactives au bout d'environ 340 secondes au niveau réseau (limitation
- * d'AWS Global Accelerator), et le TCP keep-alive ne permet PAS d'éviter
- * cette coupure (documenté par TiDB elle-même). Sans précaution, le pool
- * mysql2 continue de croire qu'une connexion coupée est valide et tente
- * de l'utiliser, ce qui provoque "write EPROTO ... handshake failure".
- * On configure donc `idleTimeout` pour que le pool ferme lui-même une
- * connexion restée inactive, avant que le réseau ne le fasse à sa place.
+ * TiDB Cloud Serverless utilise TLS sur son endpoint public.
+ * Les connexions inactives peuvent être coupées au niveau réseau après
+ * plusieurs minutes. Le pool est donc configuré pour recycler les
+ * connexions inactives avant cette coupure.
  */
 
 function createDb(databaseUrl: string) {
+  const parsed = new URL(databaseUrl);
+
   const useSsl = process.env.DATABASE_SSL === "true";
 
   const pool = mysql.createPool({
-    uri: databaseUrl,
+    host: parsed.hostname,
+    port: Number(parsed.port || 4000),
 
-    // Recycle une connexion du pool après 4 min d'inactivité (240 000 ms),
-    // nettement sous la limite réseau de ~340s de TiDB Serverless sur AWS.
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+
+    database: decodeURIComponent(parsed.pathname.replace(/^\/+/, "")),
+
+    waitForConnections: true,
+    connectionLimit: 5,
+    maxIdle: 5,
+
+    // TiDB Cloud Serverless peut couper une connexion inactive
+    // avant que le pool ne la réutilise.
     idleTimeout: 240_000,
+
     enableKeepAlive: true,
     keepAliveInitialDelay: 10_000,
 
