@@ -12,7 +12,6 @@ import mysql from "mysql2/promise";
  * plusieurs minutes. Le pool est donc configuré pour recycler les
  * connexions inactives avant cette coupure.
  */
-
 function createDb(databaseUrl: string) {
   const parsed = new URL(databaseUrl);
 
@@ -25,7 +24,9 @@ function createDb(databaseUrl: string) {
     user: decodeURIComponent(parsed.username),
     password: decodeURIComponent(parsed.password),
 
-    database: decodeURIComponent(parsed.pathname.replace(/^\/+/, "")),
+    database: decodeURIComponent(
+      parsed.pathname.replace(/^\/+/, "")
+    ),
 
     waitForConnections: true,
     connectionLimit: 5,
@@ -46,6 +47,15 @@ function createDb(databaseUrl: string) {
           },
         }
       : {}),
+  });
+
+  /**
+   * Diagnostic temporaire :
+   * permet de savoir quand mysql2 crée réellement
+   * une nouvelle connexion vers TiDB.
+   */
+  pool.on("connection", () => {
+    console.log("[Database] New MySQL/TiDB connection established");
   });
 
   return drizzle(pool);
