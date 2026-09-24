@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
 
-const connectionString = process.env.DATABASE_URL;
+const env = (globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+const connectionString = env.DATABASE_URL;
 if (!connectionString) {
   throw new Error("DATABASE_URL is required to run drizzle commands");
 }
@@ -17,7 +18,7 @@ if (!connectionString) {
  * reste du code serveur).
  */
 function withSsl(url: string): string {
-  if (process.env.DATABASE_SSL !== "true") return url;
+  if (env.DATABASE_SSL !== "true") return url;
   const parsed = new URL(url);
   parsed.searchParams.set("ssl", JSON.stringify({ minVersion: "TLSv1.2", rejectUnauthorized: true }));
   return parsed.toString();
