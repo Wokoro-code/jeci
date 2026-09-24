@@ -7,6 +7,15 @@ import mysql from "mysql2/promise";
  * En production sur TiDB Cloud, DATABASE_SSL=true active TLS.
  * Les options TLS sont transmises directement à mysql2 plutôt
  * que d'être encodées dans DATABASE_URL.
+ *
+ * TiDB Serverless (endpoint public, sur AWS) coupe les connexions
+ * inactives au bout d'environ 340 secondes au niveau réseau (limitation
+ * d'AWS Global Accelerator), et le TCP keep-alive ne permet PAS d'éviter
+ * cette coupure (documenté par TiDB elle-même). Sans précaution, le pool
+ * mysql2 continue de croire qu'une connexion coupée est valide et tente
+ * de l'utiliser, ce qui provoque "write EPROTO ... handshake failure".
+ * On configure donc `idleTimeout` pour que le pool ferme lui-même une
+ * connexion restée inactive, avant que le réseau ne le fasse à sa place.
  */
 
 function createDb(databaseUrl: string) {
@@ -14,6 +23,12 @@ function createDb(databaseUrl: string) {
 
   const pool = mysql.createPool({
     uri: databaseUrl,
+
+    // Recycle une connexion du pool après 4 min d'inactivité (240 000 ms),
+    // nettement sous la limite réseau de ~340s de TiDB Serverless sur AWS.
+    idleTimeout: 240_000,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10_000,
 
     ...(useSsl
       ? {
